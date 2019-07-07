@@ -1,0 +1,3 @@
+S - stream
+R - raspberryPi
+T - telegram
