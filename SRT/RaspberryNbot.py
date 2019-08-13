@@ -4,7 +4,7 @@ import telebot as tb
 import cv2
 
 # Constants
-bot_token = '825758758:AAEj49km04_2DSyfW3mtOLIA-1MFsBqXA_c'
+bot_token = ''
 
 bot = tb.TeleBot(bot_token)
 
