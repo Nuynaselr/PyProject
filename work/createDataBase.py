@@ -1,5 +1,49 @@
 import mysql.connector
 from configparser import ConfigParser
+from os import popen
+
+
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
+    dicti = {
+        "UID": UID,
+        "PID": PID,
+        "PPID": PPID,
+        "C": C,
+        "SZ": SZ,
+        "RSS": RSS,
+        "PSR": PSR,
+        "STIME": str(STIME),
+        "TTY": TTY,
+        "TIME": TIME,
+        "CMD": CMD
+    }
+    return dicti
+
+
+def get_json():
+    command = 'ps -eF'
+    output = popen(command)
+    process = output.read()
+    output.close()
+
+    process = process.split('\n')
+
+    for i in range(len(process)):
+        process[i] = process[i].split(' ')
+
+    for i in range(len(process)):
+        for j in range(process[i].count('')):
+            process[i].remove('')
+
+    array_json = []
+    process = process[1:]
+    for i in range(len(process) - 1):
+        if process[i][0] != 'root':
+            array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
+                                          process[i][4], process[i][5], process[i][6], process[i][7], process[i][8],
+                                          process[i][9], process[i][10]))
+
+    return array_json
 
 
 def read_db_config(filename='config.ini', section='mysql'):
@@ -19,39 +63,11 @@ def read_db_config(filename='config.ini', section='mysql'):
     return db
 
 
-def read_data_base():
-    data_base = read_db_config()
-    try:
-        connect = mysql.connector.connect(host=data_base.get('host'),
-                                          database=data_base.get('database'),
-                                          user=data_base.get('user'),
-                                          password=data_base.get('password'))
-
-        if connect.is_connected():
-            print('Connected to MariaDB')
-
-        cursor = connect.cursor()
-        cursor.execute("SELECT * FROM monitoring_system")
-
-        row = cursor.fetchone()
-
-        while row is not None:
-            print(row)
-            row = cursor.fetchone()
-
-    except mysql.connector.Error as e:
-        print(e)
-    finally:
-        cursor.close()
-        connect.close()
-
-
-def add_data(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
+def add_data():
     try:
         data_base = read_db_config()
 
         query = 'INSERT INTO monitoring_system(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
-        args = (UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD)
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -61,15 +77,23 @@ def add_data(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
         if connect.is_connected():
             print('Connected to MariaDB')
 
-        cursor = connect.cursor()
-        cursor.execute(query, args)
+        data = get_json()
+        for cell in data:
+            cursor = connect.cursor()
+            args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
+                     cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
+                     cell.get('TIME'), cell.get('CMD'))
 
-        if cursor.lastrowid:
-            print('last insert id', cursor.lastrowid)
-        else:
-            print('last insert id not found')
+
+            cursor.execute(query, args)
+
+        # if cursor.lastrowid:
+        #     print('last insert id', cursor.lastrowid)
+        # else:
+        #     print('last insert id not found')
 
         connect.commit()
+        print('Create Table')
 
     except mysql.connector.Error as error:
         print(error)
@@ -79,18 +103,32 @@ def add_data(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
         connect.close()
 
 
+def clean_table():
+    try:
+        data_base = read_db_config()
+
+        query = 'TRUNCATE TABLE monitoring_system'
+
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
+
+        if connect.is_connected():
+            print('Connected to MariaDB')
+
+        cursor = connect.cursor()
+        cursor.execute(query)
+
+    except mysql.connector.Error as error:
+        print(error)
+
+    finally:
+        cursor.close()
+        connect.close()
+        print('Table cleared')
+
+
 if __name__ == '__main__':
-    """
-         0 "UID": "root",
-         1 "PID": 1,
-         2 "PPID": 0,
-         3 "C": 0,
-         4 "SZ": 30299,
-         5 "RSS": 9932,
-         6 "PSR": 2,
-         7 "STIME": "15:31",
-         8 "TTY": "?",
-         9 "TIME": "00:00:02",
-         10 "CMD": "/sbin/init"
-     """
-    add_data("root", 1, 0, 0, 30299, 9932, 2, "15:31", "?", "00:00:02", "/sbin/init")
+    clean_table()
+    add_data()
