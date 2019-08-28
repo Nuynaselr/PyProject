@@ -1,9 +1,10 @@
 import mysql.connector
 from configparser import ConfigParser
 from os import popen
+import time
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME):
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -12,10 +13,11 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
         "SZ": SZ,
         "RSS": RSS,
         "PSR": PSR,
-        "STIME": str(STIME),
+        "STIME": time.time(),
         "TTY": TTY,
         "TIME": TIME,
-        "CMD": CMD
+        "CMD": CMD,
+        "ENDTIME": ENDTIME
     }
     return dicti
 
@@ -41,7 +43,7 @@ def get_json():
         if process[i][0] != 'root' and process[i][10] != 'ps':
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7], process[i][8],
-                                          process[i][9], process[i][10]))
+                                          process[i][9], process[i][10], ''))
 
     return array_json
 
@@ -67,7 +69,7 @@ def add_data():
     try:
         data_base = read_db_config()
 
-        query = 'INSERT INTO monitoring_system(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO monitoring_system(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -82,7 +84,7 @@ def add_data():
             cursor = connect.cursor()
             args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                      cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                     cell.get('TIME'), cell.get('CMD'))
+                     cell.get('TIME'), cell.get('CMD'), cell.get('ENDTIME'))
 
 
             cursor.execute(query, args)

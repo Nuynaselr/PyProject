@@ -14,7 +14,7 @@ time_sleep = {
 }
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME):
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -23,10 +23,11 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD):
         "SZ": SZ,
         "RSS": RSS,
         "PSR": PSR,
-        "STIME": str(STIME),
+        "STIME": time.time(),
         "TTY": TTY,
         "TIME": TIME,
-        "CMD": CMD
+        "CMD": CMD,
+        "ENDTIME": ENDTIME
     }
     return dicti
 
@@ -48,7 +49,7 @@ def read_db_config(filename='config.ini', section='mysql'):
     return db
 
 
-def delete_by_pid(PID):
+def update_by_pid(PID):
     try:
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -56,7 +57,7 @@ def delete_by_pid(PID):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        cursor.execute('DELETE FROM monitoring_system WHERE PID = %s', (PID,))
+        cursor.execute('UPDATE monitoring_system SET ENDTIME = %s WHERE PID = %s', (time.time(), PID,))
 
         connect.commit()
 
@@ -86,7 +87,7 @@ def read_db():
         while row is not None:
             # print(row)
             json_db.append(gen_element(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9],
-                                       row[10]))
+                                       row[10], row[11]))
             array_PID_db.append(row[1])
             row = cursor.fetchone()
 
@@ -119,12 +120,11 @@ def get_json():
     array_json = []
     process = process[1:]
     for i in range(len(process) - 1):
-        if process[i][0] != 'root' and process[i][10] != 'ps':
+        if process[i][0] != 'root' and process[i][10] != 'ps' and process[i][10] != '/usr/bin/ps':
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7], process[i][8],
-                                          process[i][9], process[i][10]))
+                                          process[i][9], process[i][10], ''))
             array_PID.append(int(process[i][1]))
-
     return array_json
 
 
@@ -169,13 +169,15 @@ def processing(json, json_db):
     for index in range(len_json if len_json > len_json_db else len_json_db):
         error_index = index
         if index < len_json_db:
-            if json_db[index].get('PID') not in array_PID:
-                print('delete: ', json_db[index].get('PID'), ' ', json_db[index])
-                delete_by_pid(json_db[index].get('PID'))
+            if json_db[index].get('PID') in array_PID: #and json_db[index].get('ENDTIME') == None:
+                # print('close: ', json_db[index].get('PID'), ' ', json_db[index])
+                # close_by_pid(json_db[index].get('PID'))
+                update_by_pid(json_db[index].get('PID'))
         if index < len_json:
             if int(json[index].get('PID')) not in array_PID_db:
                 print('add: ', json[index].get('PID'), ' ', json[index])
                 add_data(json[index])
+
     # except IndexError as e:
     #     print(e)
     #     print(error_index)
