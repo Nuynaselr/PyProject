@@ -6,6 +6,7 @@ import time
 data_base = {}
 array_PID = []
 array_PID_db = []
+name_table = ''
 time_sleep = {
     'test': 2,
     'one_minute': 60,
@@ -14,7 +15,7 @@ time_sleep = {
 }
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'active'):
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -27,7 +28,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME)
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "ENDTIME": ENDTIME
+        "ENDTIME": ENDTIME,
+        "LIVE": LIVE
     }
     return dicti
 
@@ -57,7 +59,29 @@ def update_by_pid(PID):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        cursor.execute('UPDATE monitoring_system SET ENDTIME = %s WHERE PID = %s', (time.time(), PID,))
+        update_row = 'UPDATE ' + name_table + ' SET ENDTIME = %s WHERE PID = %s'
+        cursor.execute(update_row, (time.time(), PID,))
+
+        connect.commit()
+
+    except mysql.connector.Error as e:
+        print(e)
+
+    finally:
+        cursor.close()
+        connect.close()
+
+
+def update_by_pid_death(PID):
+    try:
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
+
+        cursor = connect.cursor()
+        update_row = 'UPDATE ' + name_table + ' SET LIVE = %s WHERE PID = %s'
+        cursor.execute(update_row, ('dead', PID,))
 
         connect.commit()
 
@@ -80,14 +104,15 @@ def read_db():
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
         cursor = connect.cursor()
-        cursor.execute("SELECT * FROM monitoring_system")
+        read_row = "SELECT * FROM " + name_table
+        cursor.execute(read_row)
 
         row = cursor.fetchone()
 
         while row is not None:
             # print(row)
             json_db.append(gen_element(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9],
-                                       row[10], row[11]))
+                                       row[10], row[11], row[12]))
             array_PID_db.append(row[1])
             row = cursor.fetchone()
 
@@ -130,7 +155,7 @@ def get_json():
 
 def add_data(cell):
     try:
-        query = 'INSERT INTO monitoring_system(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -140,7 +165,7 @@ def add_data(cell):
         cursor = connect.cursor()
         args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                 cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                cell.get('TIME'), cell.get('CMD'))
+                cell.get('TIME'), cell.get('CMD'), cell.get('LIVE'))
 
 
         cursor.execute(query, args)
@@ -163,20 +188,19 @@ def add_data(cell):
 def processing(json, json_db):
     len_json = len(json)
     len_json_db = len(json_db)
-    # print(len_json if len_json > len_json_db else len_json_db)
-    # print(len_json, len_json_db)
-    error_index = 0
+
     for index in range(len_json if len_json > len_json_db else len_json_db):
-        error_index = index
         if index < len_json_db:
             if json_db[index].get('PID') in array_PID: #and json_db[index].get('ENDTIME') == None:
-                # print('close: ', json_db[index].get('PID'), ' ', json_db[index])
-                # close_by_pid(json_db[index].get('PID'))
                 update_by_pid(json_db[index].get('PID'))
+            else:
+                update_by_pid_death(json_db[index].get('PID'))
         if index < len_json:
             if int(json[index].get('PID')) not in array_PID_db:
                 print('add: ', json[index].get('PID'), ' ', json[index])
                 add_data(json[index])
+            else:
+                update_by_pid_death(json_db[index].get('PID'))
 
     # except IndexError as e:
     #     print(e)
@@ -189,6 +213,7 @@ def processing(json, json_db):
 if __name__ == '__main__':
     try:
         data_base = read_db_config()
+        name_table = data_base.get('last_name_table')
         while True:
             processing(get_json(), read_db())
             time.sleep(time_sleep.get('test'))

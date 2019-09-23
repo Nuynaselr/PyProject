@@ -3,7 +3,8 @@ from configparser import ConfigParser
 from os import popen
 import time
 
-name_table = ''
+data_base = {}
+name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
 
 def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'active'):
     dicti = {
@@ -68,38 +69,51 @@ def read_db_config(filename='config.ini', section='mysql'):
 
 
 def create_table():
-    data_base = read_db_config()
-    connect = mysql.connector.connect(host=data_base.get('host'),
-                                      database=data_base.get('database'),
-                                      user=data_base.get('user'),
-                                      password=data_base.get('password'))
+    try:
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
 
-    if connect.is_connected():
-        print('Connected to MariaDB')
+        # if connect.is_connected():
+        #     print('Connected to MariaDB')
 
-    cursor = connect.cursor()
-    name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
-    create_row = 'CREATE table %s (UID VARCHAR(10), PID INTEGER, PPID INTEGER, C INTEGER, SZ INTEGER, ' \
-                 'RSS INTEGER, PSR INTEGER, STIME VARCHAR(14), TTY VARCHAR(10), TIME VARCHAR(8), CMD VARCHAR(70), ' \
-                 'ENDTIME VARCHAR(8), LIVE VARCHAR(7), PRIMARY KEY (PID) )' % name_table
-    print(create_row)
+        cursor = connect.cursor()
+        create_row = 'CREATE table %s (UID VARCHAR(10), ' \
+                     'PID INTEGER, ' \
+                     'PPID INTEGER, ' \
+                     'C INTEGER, ' \
+                     'SZ INTEGER, ' \
+                     'RSS INTEGER, ' \
+                     'PSR INTEGER, ' \
+                     'STIME VARCHAR(20), ' \
+                     'TTY VARCHAR(10), ' \
+                     'TIME VARCHAR(8), ' \
+                     'CMD VARCHAR(70), ' \
+                     'ENDTIME VARCHAR(20), ' \
+                     'LIVE VARCHAR(7), ' \
+                     'PRIMARY KEY (PID) )' % name_table
 
-    cursor.execute(create_row)
+        cursor.execute(create_row)
+    except mysql.connector.Error as error:
+        print(error)
+
+    finally:
+        cursor.close()
+        connect.close()
 
 
 def add_data():
     try:
-        data_base = read_db_config()
-
-        query = 'INSERT INTO ' + name_table + 'UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
 
-        if connect.is_connected():
-            print('Connected to MariaDB')
+        # if connect.is_connected():
+        #     print('Connected to MariaDB')
 
         data = get_json()
         for cell in data:
@@ -117,7 +131,7 @@ def add_data():
         #     print('last insert id not found')
 
         connect.commit()
-        print('Create Table')
+        # print('Create Table')
 
     except mysql.connector.Error as error:
         print(error)
@@ -127,32 +141,43 @@ def add_data():
         connect.close()
 
 
-def clean_table():
-    try:
-        data_base = read_db_config()
-
-        query = 'TRUNCATE TABLE ' + name_table
-
-        connect = mysql.connector.connect(host=data_base.get('host'),
-                                          database=data_base.get('database'),
-                                          user=data_base.get('user'),
-                                          password=data_base.get('password'))
-
-        if connect.is_connected():
-            print('Connected to MariaDB')
-
-        cursor = connect.cursor()
-        cursor.execute(query)
-
-    except mysql.connector.Error as error:
-        print(error)
-
-    finally:
-        cursor.close()
-        connect.close()
-        print('Table cleared')
+# def clean_table():
+#     try:
+#
+#         query = 'TRUNCATE TABLE ' + name_table
+#
+#         connect = mysql.connector.connect(host=data_base.get('host'),
+#                                           database=data_base.get('database'),
+#                                           user=data_base.get('user'),
+#                                           password=data_base.get('password'))
+#
+#         if connect.is_connected():
+#             print('Connected to MariaDB')
+#
+#         cursor = connect.cursor()
+#         cursor.execute(query)
+#
+#     except mysql.connector.Error as error:
+#         print(error)
+#
+#     finally:
+#         cursor.close()
+#         connect.close()
+#         print('Table cleared')
 
 
 if __name__ == '__main__':
+    head = []
+    row = ''
+    with open('config.ini', 'r') as config:
+        head = [next(config) for x in range(5)]
+
+    with open('config.ini', 'w') as config:
+        for i in range(5):
+            row = row + head[i]
+        row = row + 'last_name_table = ' + name_table + '\n'
+        config.write(row)
+
+    data_base = read_db_config()
     create_table()
     add_data()
