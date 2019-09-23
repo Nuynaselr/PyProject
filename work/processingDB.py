@@ -187,8 +187,10 @@ def processing(json, json_db):
 
 
 if __name__ == '__main__':
-    data_base = read_db_config()
-    while True:
-        processing(get_json(), read_db())
-        time.sleep(time_sleep.get('test'))
-
+    try:
+        data_base = read_db_config()
+        while True:
+            processing(get_json(), read_db())
+            time.sleep(time_sleep.get('test'))
+    except KeyboardInterrupt as er:
+        pass

@@ -3,8 +3,9 @@ from configparser import ConfigParser
 from os import popen
 import time
 
+name_table = ''
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'active'):
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -17,7 +18,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME)
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "ENDTIME": ENDTIME
+        "ENDTIME": ENDTIME,
+        "LIVE": LIVE
     }
     return dicti
 
@@ -65,11 +67,31 @@ def read_db_config(filename='config.ini', section='mysql'):
     return db
 
 
+def create_table():
+    data_base = read_db_config()
+    connect = mysql.connector.connect(host=data_base.get('host'),
+                                      database=data_base.get('database'),
+                                      user=data_base.get('user'),
+                                      password=data_base.get('password'))
+
+    if connect.is_connected():
+        print('Connected to MariaDB')
+
+    cursor = connect.cursor()
+    name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
+    create_row = 'CREATE table %s (UID VARCHAR(10), PID INTEGER, PPID INTEGER, C INTEGER, SZ INTEGER, ' \
+                 'RSS INTEGER, PSR INTEGER, STIME VARCHAR(14), TTY VARCHAR(10), TIME VARCHAR(8), CMD VARCHAR(70), ' \
+                 'ENDTIME VARCHAR(8), LIVE VARCHAR(7), PRIMARY KEY (PID) )' % name_table
+    print(create_row)
+
+    cursor.execute(create_row)
+
+
 def add_data():
     try:
         data_base = read_db_config()
 
-        query = 'INSERT INTO monitoring_system(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + 'UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -84,7 +106,7 @@ def add_data():
             cursor = connect.cursor()
             args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                      cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                     cell.get('TIME'), cell.get('CMD'), cell.get('ENDTIME'))
+                     cell.get('TIME'), cell.get('CMD'), cell.get('ENDTIME'), cell.get('LIVE'))
 
 
             cursor.execute(query, args)
@@ -109,7 +131,7 @@ def clean_table():
     try:
         data_base = read_db_config()
 
-        query = 'TRUNCATE TABLE monitoring_system'
+        query = 'TRUNCATE TABLE ' + name_table
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -132,5 +154,5 @@ def clean_table():
 
 
 if __name__ == '__main__':
-    clean_table()
+    create_table()
     add_data()
