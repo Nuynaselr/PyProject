@@ -1,0 +1,10 @@
+[Unit]
+Description=start monitoring system
+
+[Service]
+Type=simple
+WorkingDirectory=/home/np/PyProject/work
+ExecStart=/home/np/PyProject/work/mon.sh
+
+[Install]
+WantedBy=multi-user.target
