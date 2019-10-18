@@ -237,7 +237,36 @@ if __name__ == '__main__':
         data_base = read_db_config()
         name_table = data_base.get('last_name_table')
         while True:
+            mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
             processing(get_json(), read_db())
             time.sleep(time_sleep.get('test'))
+
     except KeyboardInterrupt as er:
         pass
+    except mysql.connector.errors.DatabaseError as error:
+
+        for connection_attempt in range(3):
+            print(error, '\n', 'Connection attempt. Number attempt: ' + str(connection_attempt))
+            try:
+                connect = mysql.connector.connect(host=data_base.get('host'),
+                                                  database=data_base.get('database'),
+                                                  user=data_base.get('user'),
+                                                  password=data_base.get('password'))
+                cursor = connect.cursor()
+                cursor.execute('SHOW TABLES')
+
+                row = cursor.fetchall()
+                table_list = []
+                for name_table_check in row:
+                    table_list.append(name_table_check[0])
+                if name_table not in table_list:
+                    command = 'python /home/np/PyProject/work/createDataBase.py'
+                    popen(command)
+                print('Connection detected')
+                break
+
+            except mysql.connector.errors.DatabaseError:
+                pass

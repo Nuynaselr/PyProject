@@ -146,29 +146,21 @@ def add_data():
         connect.close()
 
 
-# def clean_table():
-#     try:
-#
-#         query = 'TRUNCATE TABLE ' + name_table
-#
-#         connect = mysql.connector.connect(host=data_base.get('host'),
-#                                           database=data_base.get('database'),
-#                                           user=data_base.get('user'),
-#                                           password=data_base.get('password'))
-#
-#         if connect.is_connected():
-#             print('Connected to MariaDB')
-#
-#         cursor = connect.cursor()
-#         cursor.execute(query)
-#
-#     except mysql.connector.Error as error:
-#         print(error)
-#
-#     finally:
-#         cursor.close()
-#         connect.close()
-#         print('Table cleared')
+def spec_main():
+    head = []
+    row = ''
+    with open('/home/np/PyProject/work/config.ini', 'r') as config:
+        head = [next(config) for x in range(5)]
+
+    with open('config.ini', 'w') as config:
+        for i in range(5):
+            row = row + head[i]
+        row = row + 'last_name_table = ' + name_table + '\n'
+        config.write(row)
+
+    data_base = read_db_config()
+    create_table()
+    add_data()
 
 
 if __name__ == '__main__':
