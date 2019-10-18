@@ -6,7 +6,7 @@ import time
 data_base = {}
 name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, LIVE = 'active'):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, LIVE = 'action'):
     time_process = time.time()
     dicti = {
         "UID": UID,

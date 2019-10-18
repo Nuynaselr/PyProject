@@ -15,7 +15,8 @@ time_sleep = {
 }
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'active'):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'action'):
+    current_time = time.time()
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -24,11 +25,11 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME,
         "SZ": SZ,
         "RSS": RSS,
         "PSR": PSR,
-        "STIME": time.time(),
+        "STIME": current_time,
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "ENDTIME": ENDTIME,
+        "ENDTIME": current_time,
         "LIVE": LIVE
     }
     return dicti
