@@ -6,8 +6,8 @@ import time
 data_base = {}
 name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, LIVE = 'action'):
-    time_process = time.time()
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = 'action'):
+    time_process = time.time() + 5
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -20,6 +20,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, LIVE = 'action'
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
+        "CPU": PCPU,
+        "MEM": PMEM,
         "ENDTIME": time_process,
         "LIVE": LIVE
     }
@@ -27,7 +29,7 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, LIVE = 'action'
 
 
 def get_json():
-    command = 'ps -eF'
+    command = 'ps -eo uid,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
     output = popen(command)
     process = output.read()
     output.close()
@@ -44,10 +46,10 @@ def get_json():
     array_json = []
     process = process[1:]
     for i in range(len(process) - 1):
-        if process[i][0] != 'root' and process[i][10] != 'ps':
+        if process[i][0] != '0' and process[i][11] != 'ps' and process[i][11] != '/usr/bin/ps':
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
-                                          process[i][4], process[i][5], process[i][6], process[i][8],
-                                          process[i][9], process[i][10]))
+                                          process[i][4], process[i][5], process[i][6], process[i][7],
+                                          process[i][8], process[i][11], process[i][9], process[i][10]))
 
     return array_json
 
@@ -91,6 +93,8 @@ def create_table():
                      'TTY VARCHAR(10), ' \
                      'TIME VARCHAR(8), ' \
                      'CMD VARCHAR(70), ' \
+                     'CPU VARCHAR(20), ' \
+                     'MEM VARCHAR(20), ' \
                      'ENDTIME VARCHAR(20), ' \
                      'LIVE VARCHAR(7), ' \
                      'PRIMARY KEY (PID) )' % name_table
@@ -106,7 +110,7 @@ def create_table():
 
 def add_data():
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -121,7 +125,7 @@ def add_data():
             cursor = connect.cursor()
             args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                      cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                     cell.get('TIME'), cell.get('CMD'), cell.get('ENDTIME'), cell.get('LIVE'))
+                     cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('ENDTIME'), cell.get('LIVE'))
 
 
             cursor.execute(query, args)

@@ -15,8 +15,8 @@ time_sleep = {
 }
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME, LIVE = 'action'):
-    current_time = time.time()
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = 'action'):
+    time_process = time.time()
     dicti = {
         "UID": UID,
         "PID": PID,
@@ -25,11 +25,13 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, ENDTIME,
         "SZ": SZ,
         "RSS": RSS,
         "PSR": PSR,
-        "STIME": current_time,
+        "STIME": time_process,
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "ENDTIME": current_time,
+        "CPU": PCPU,
+        "MEM": PMEM,
+        "ENDTIME": time_process,
         "LIVE": LIVE
     }
     return dicti
@@ -52,7 +54,7 @@ def read_db_config(filename='/home/np/PyProject/work/config.ini', section='mysql
     return db
 
 
-def update_by_pid(PID):
+def update_by_pid(PID, CPU, MEM):
     try:
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -60,8 +62,8 @@ def update_by_pid(PID):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        update_row = 'UPDATE ' + name_table + ' SET ENDTIME = %s, LIVE = "action" WHERE PID = %s'
-        cursor.execute(update_row, (time.time(), PID,))
+        update_row = 'UPDATE ' + name_table + ' SET CPU = %s, MEM = %s, ENDTIME = %s, LIVE = "action" WHERE PID = %s'
+        cursor.execute(update_row, (CPU, MEM, time.time(), PID,))
 
         connect.commit()
 
@@ -129,7 +131,7 @@ def read_db():
 
 def get_json():
     array_PID.clear()
-    command = 'ps -eF'
+    command = 'ps -eo uid,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
     output = popen(command)
     process = output.read()
     output.close()
@@ -146,17 +148,19 @@ def get_json():
     array_json = []
     process = process[1:]
     for i in range(len(process) - 1):
-        if process[i][0] != 'root' and process[i][10] != 'ps' and process[i][10] != '/usr/bin/ps':
+        if process[i][0] != '0' and \
+                process[i][11] != 'ps' and \
+                process[i][11] != '/usr/bin/ps':
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
-                                          process[i][4], process[i][5], process[i][6], process[i][7], process[i][8],
-                                          process[i][9], process[i][10], ''))
+                                          process[i][4], process[i][5], process[i][6], process[i][7],
+                                          process[i][8], process[i][11], process[i][9], process[i][10]))
             array_PID.append(int(process[i][1]))
     return array_json
 
 
 def add_data(cell):
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -164,9 +168,10 @@ def add_data(cell):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
-                cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                cell.get('TIME'), cell.get('CMD'), cell.get('LIVE'))
+        args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'), cell.get('SZ'),
+                cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
+                cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('ENDTIME'),
+                cell.get('LIVE'))
 
 
         cursor.execute(query, args)
@@ -187,13 +192,15 @@ def add_data(cell):
 
 
 def processing(json, json_db):
-    len_json = len(json)
-    len_json_db = len(json_db)
+    len_json = len(json) # Json in pc
+    len_json_db = len(json_db) # Json in db
 
     for index in range(len_json if len_json > len_json_db else len_json_db):
         if index < len_json_db:
             if json_db[index].get('PID') in array_PID: #and json_db[index].get('ENDTIME') == None:
-                update_by_pid(json_db[index].get('PID'))
+                #number element in array for get value CPU and MEM
+                number_in_array = array_PID.index(json_db[index].get('PID'))
+                update_by_pid(json_db[index].get('PID'), json[number_in_array].get('CPU'), json[number_in_array].get('MEM'))
             else:
                 update_by_pid_death(json_db[index].get('PID'))
         if index < len_json:
