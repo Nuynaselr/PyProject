@@ -20,8 +20,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "CPU": PCPU,
-        "MEM": PMEM,
+        "CPU": float(PCPU),
+        "MEM": float(PMEM),
         "ENDTIME": time_process,
         "LIVE": LIVE
     }
@@ -93,8 +93,8 @@ def create_table():
                      'TTY VARCHAR(10), ' \
                      'TIME VARCHAR(8), ' \
                      'CMD VARCHAR(70), ' \
-                     'CPU VARCHAR(20), ' \
-                     'MEM VARCHAR(20), ' \
+                     'CPU DOUBLE (4,1), ' \
+                     'MEM DOUBLE (4,1), ' \
                      'ENDTIME VARCHAR(20), ' \
                      'LIVE VARCHAR(7), ' \
                      'PRIMARY KEY (PID) )' % name_table

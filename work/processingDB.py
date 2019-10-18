@@ -29,8 +29,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
         "TTY": TTY,
         "TIME": TIME,
         "CMD": CMD,
-        "CPU": PCPU,
-        "MEM": PMEM,
+        "CPU": float(PCPU),
+        "MEM": float(PMEM),
         "ENDTIME": time_process,
         "LIVE": LIVE
     }
@@ -107,15 +107,16 @@ def read_db():
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
         cursor = connect.cursor()
-        read_row = "SELECT * FROM " + name_table
+        read_row = "SELECT * FROM " + name_table + " WHERE LIVE = 'action'"
         cursor.execute(read_row)
 
         row = cursor.fetchone()
 
         while row is not None:
-            # print(row)
-            json_db.append(gen_element(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9],
-                                       row[10], row[11], row[12]))
+            # print(row)  UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, PCPU, PMEM, ENDTIME, LIVE
+            #               0   1   2     3   4   5     6     7     8    9    10    11    12    13      14
+            json_db.append(gen_element(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[8], row[9], row[10],
+                                       row[11], row[12], row[14]))
             array_PID_db.append(row[1])
             row = cursor.fetchone()
 
@@ -200,7 +201,20 @@ def processing(json, json_db):
             if json_db[index].get('PID') in array_PID: #and json_db[index].get('ENDTIME') == None:
                 #number element in array for get value CPU and MEM
                 number_in_array = array_PID.index(json_db[index].get('PID'))
-                update_by_pid(json_db[index].get('PID'), json[number_in_array].get('CPU'), json[number_in_array].get('MEM'))
+
+                element_in_pc_CPU = json[number_in_array].get('CPU')
+                element_in_pc_MEM = json[number_in_array].get('MEM')
+                element_in_DB_CPU = json_db[index].get('CPU')
+                element_in_DB_MEM = json_db[index].get('MEM')
+                # print('CMD ' + json_db[index].get('CMD'),
+                #       'element_in_pc_CPU ' + element_in_pc_CPU,
+                #       'element_in_pc_MEM ' + element_in_pc_MEM,
+                #       'element_in_DB_CPU ' + element_in_DB_CPU,
+                #       'element_in_DB_MEM ' + element_in_DB_MEM)
+                update_by_pid(json_db[index].get('PID'),
+                              json[number_in_array].get('CPU') if json[number_in_array].get('CPU') > json_db[index].get('CPU') else json_db[index].get('CPU'),
+                              json[number_in_array].get('MEM') if json[number_in_array].get('MEM') > json_db[index].get('MEM') else json_db[index].get('MEM'))
+
             else:
                 update_by_pid_death(json_db[index].get('PID'))
         if index < len_json:
