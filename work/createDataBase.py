@@ -6,6 +6,7 @@ import time
 data_base = {}
 name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
 
+
 def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = 'action'):
     time_process = time.time() + 5
     dicti = {
@@ -22,10 +23,45 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
         "CMD": CMD,
         "CPU": float(PCPU),
         "MEM": float(PMEM),
+        "GPU": '',
+        "GMEM": '',
         "ENDTIME": time_process,
         "LIVE": LIVE
     }
     return dicti
+
+
+def get_njson():
+    row = ''
+    with open('nvidiaData', 'r') as file:
+          row = file.read()
+    # output = popen('nvidia-smi pmon -c 1 -s m')
+    # row = output.read()
+    # output.close()
+
+    row = row.split('\n')
+
+    row.pop(0)
+    row.pop(0)
+
+    for i in range(len(row)):
+        row[i] = row[i].split(' ')
+
+    for i in range(len(row)):
+        for j in range(row[i].count('')):
+            row[i].remove('')
+
+    array_json = []
+    for i in range(len(row) - 1):
+        if row[i][0] != 'root':
+            array_json.append({
+                'GPU': row[i][0],
+                'PID': row[i][1],
+                'TYPE': row[i][2],
+                'GMEM': row[i][3],
+                'COMMAND': row[i][4]
+            })
+    return array_json
 
 
 def get_json():
@@ -50,6 +86,14 @@ def get_json():
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7],
                                           process[i][8], process[i][11], process[i][9], process[i][10]))
+
+    array_njson = get_njson()
+    for element in array_json:
+        for element_n in array_njson:
+            if element.get('PID') == element_n.get('PID'):
+                element.update({'GPU': str(element.get('GPU')) + '|' + element_n.get('GPU')})
+                element.update({'GMEM': str(element.get('GMEM')) + '|' + element_n.get('GMEM')})
+                element.update({'TYPE_': element_n.get('TYPE')})
 
     return array_json
 
@@ -95,6 +139,9 @@ def create_table():
                      'CMD VARCHAR(70), ' \
                      'CPU DOUBLE (4,1), ' \
                      'MEM DOUBLE (4,1), ' \
+                     'GPU VARCHAR (10), ' \
+                     'TYPE_ varchar (1), ' \
+                     'GMEM varchar (10), ' \
                      'ENDTIME VARCHAR(20), ' \
                      'LIVE VARCHAR(7), ' \
                      'PRIMARY KEY (PID) )' % name_table
@@ -110,7 +157,8 @@ def create_table():
 
 def add_data():
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
+                                              'VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -125,7 +173,8 @@ def add_data():
             cursor = connect.cursor()
             args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                      cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                     cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('ENDTIME'), cell.get('LIVE'))
+                     cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('GPU'),
+                    cell.get('TYPE_'), cell.get('GMEM'),cell.get('ENDTIME'), cell.get('LIVE'))
 
 
             cursor.execute(query, args)

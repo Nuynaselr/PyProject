@@ -31,6 +31,8 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
         "CMD": CMD,
         "CPU": float(PCPU),
         "MEM": float(PMEM),
+        "GPU": '',
+        "GMEM": '',
         "ENDTIME": time_process,
         "LIVE": LIVE
     }
@@ -129,6 +131,38 @@ def read_db():
 
     return json_db
 
+def get_njson():
+    row = ''
+    with open('nvidiaData', 'r') as file:
+          row = file.read()
+    # output = popen('nvidia-smi pmon -c 1 -s m')
+    # row = output.read()
+    # output.close()
+
+    row = row.split('\n')
+
+    row.pop(0)
+    row.pop(0)
+
+    for i in range(len(row)):
+        row[i] = row[i].split(' ')
+
+    for i in range(len(row)):
+        for j in range(row[i].count('')):
+            row[i].remove('')
+
+    array_json = []
+    for i in range(len(row) - 1):
+        if row[i][0] != 'root':
+            array_json.append({
+                'GPU': row[i][0],
+                'PID': row[i][1],
+                'TYPE': row[i][2],
+                'GMEM': row[i][3],
+                'COMMAND': row[i][4]
+            })
+    return array_json
+
 
 def get_json():
     array_PID.clear()
@@ -156,12 +190,22 @@ def get_json():
                                           process[i][4], process[i][5], process[i][6], process[i][7],
                                           process[i][8], process[i][11], process[i][9], process[i][10]))
             array_PID.append(int(process[i][1]))
+
+    array_njson = get_njson()
+    for element in array_json:
+        for element_n in array_njson:
+            if element.get('PID') == element_n.get('PID'):
+                element.update({'GPU': str(element.get('GPU')) + '|' + element_n.get('GPU')})
+                element.update({'GMEM': str(element.get('GMEM')) + '|' + element_n.get('GMEM')})
+                element.update({'TYPE_': element_n.get('TYPE')})
+
     return array_json
 
 
 def add_data(cell):
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, ENDTIME, LIVE) VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
+                                              'VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -169,11 +213,10 @@ def add_data(cell):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'), cell.get('SZ'),
-                cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
-                cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('ENDTIME'),
-                cell.get('LIVE'))
-
+        args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
+                cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
+                cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('GPU'),
+                cell.get('TYPE_'), cell.get('GMEM'), cell.get('ENDTIME'), cell.get('LIVE'))
 
         cursor.execute(query, args)
 
@@ -202,15 +245,6 @@ def processing(json, json_db):
                 #number element in array for get value CPU and MEM
                 number_in_array = array_PID.index(json_db[index].get('PID'))
 
-                element_in_pc_CPU = json[number_in_array].get('CPU')
-                element_in_pc_MEM = json[number_in_array].get('MEM')
-                element_in_DB_CPU = json_db[index].get('CPU')
-                element_in_DB_MEM = json_db[index].get('MEM')
-                # print('CMD ' + json_db[index].get('CMD'),
-                #       'element_in_pc_CPU ' + element_in_pc_CPU,
-                #       'element_in_pc_MEM ' + element_in_pc_MEM,
-                #       'element_in_DB_CPU ' + element_in_DB_CPU,
-                #       'element_in_DB_MEM ' + element_in_DB_MEM)
                 update_by_pid(json_db[index].get('PID'),
                               json[number_in_array].get('CPU') if json[number_in_array].get('CPU') > json_db[index].get('CPU') else json_db[index].get('CPU'),
                               json[number_in_array].get('MEM') if json[number_in_array].get('MEM') > json_db[index].get('MEM') else json_db[index].get('MEM'))
@@ -219,7 +253,7 @@ def processing(json, json_db):
                 update_by_pid_death(json_db[index].get('PID'))
         if index < len_json:
             if int(json[index].get('PID')) not in array_PID_db:
-                print('add: ', json[index].get('PID'), ' ', json[index])
+                # print('add: ', json[index].get('PID'), ' ', json[index])
                 add_data(json[index])
             # else:
             #     update_by_pid_death(json_db[index].get('PID'))
@@ -237,10 +271,11 @@ if __name__ == '__main__':
         data_base = read_db_config()
         name_table = data_base.get('last_name_table')
         while True:
-            mysql.connector.connect(host=data_base.get('host'),
+            connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
+            connect.close()
             processing(get_json(), read_db())
             time.sleep(time_sleep.get('test'))
 
@@ -266,6 +301,8 @@ if __name__ == '__main__':
                     command = 'python /home/np/PyProject/work/createDataBase.py'
                     popen(command)
                 print('Connection detected')
+                cursor.close()
+                connect.close()
                 break
 
             except mysql.connector.errors.DatabaseError:
