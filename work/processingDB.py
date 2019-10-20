@@ -15,7 +15,7 @@ time_sleep = {
 }
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = 'action'):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
     time_process = time.time()
     dicti = {
         "UID": UID,
@@ -56,7 +56,7 @@ def read_db_config(filename='/home/np/PyProject/work/config.ini', section='mysql
     return db
 
 
-def update_by_pid(PID, CPU, MEM):
+def update_by_pid(PID, CPU, MEM, GPU, GMEM):
     try:
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
@@ -64,8 +64,9 @@ def update_by_pid(PID, CPU, MEM):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        update_row = 'UPDATE ' + name_table + ' SET CPU = %s, MEM = %s, ENDTIME = %s, LIVE = "action" WHERE PID = %s'
-        cursor.execute(update_row, (CPU, MEM, time.time(), PID,))
+        update_row = 'UPDATE ' + name_table + ' SET CPU = %s, MEM = %s, ENDTIME = %s, LIVE = "1",' \
+                                              ' GPU = %s, GMEM = %s WHERE PID = %s'
+        cursor.execute(update_row, (CPU, MEM, time.time(), GPU, GMEM, PID,))
 
         connect.commit()
 
@@ -109,7 +110,7 @@ def read_db():
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
         cursor = connect.cursor()
-        read_row = "SELECT * FROM " + name_table + " WHERE LIVE = 'action'"
+        read_row = "SELECT * FROM " + name_table + " WHERE LIVE = '1'"
         cursor.execute(read_row)
 
         row = cursor.fetchone()
@@ -235,7 +236,7 @@ def add_data(cell):
         connect.close()
 
 
-def processing(json, json_db):
+def processing(json, json_db, number_of_polls):
     len_json = len(json) # Json in pc
     len_json_db = len(json_db) # Json in db
 
@@ -244,10 +245,17 @@ def processing(json, json_db):
             if json_db[index].get('PID') in array_PID: #and json_db[index].get('ENDTIME') == None:
                 #number element in array for get value CPU and MEM
                 number_in_array = array_PID.index(json_db[index].get('PID'))
-
-                update_by_pid(json_db[index].get('PID'),
-                              json[number_in_array].get('CPU') if json[number_in_array].get('CPU') > json_db[index].get('CPU') else json_db[index].get('CPU'),
-                              json[number_in_array].get('MEM') if json[number_in_array].get('MEM') > json_db[index].get('MEM') else json_db[index].get('MEM'))
+                congestion_CPU = (json_db[index].get('CPU') * number_of_polls + (json[number_in_array].get('CPU') if json[number_in_array].get('CPU') > json_db[index].get('CPU') else json_db[index].get('CPU'))) / (number_of_polls + 1)
+                # print('PID ' + str(json_db[index].get('PID')),
+                #       '\ncongestion CPU ' + str(congestion_CPU),
+                #       '\nnumber_iteration ' + str(number_of_polls),
+                #       '\nvalue in db ' + str(json_db[index].get('CPU')),
+                #       '\nvalue in pc ' + str(json[number_in_array].get('CPU')))
+                if json_db[index].get('CPU') == json[number_in_array].get('CPU') == 0:
+                    congestion_CPU = 0
+                update_by_pid(json_db[index].get('PID'), congestion_CPU,
+                              json[number_in_array].get('MEM') if json[number_in_array].get('MEM') > json_db[index].get('MEM') else json_db[index].get('MEM'),
+                              json[number_in_array].get('GPU'), json[number_in_array].get('GMEM'))
 
             else:
                 update_by_pid_death(json_db[index].get('PID'))
@@ -257,7 +265,7 @@ def processing(json, json_db):
                 add_data(json[index])
             # else:
             #     update_by_pid_death(json_db[index].get('PID'))
-
+    number_of_polls += 1
     # except IndexError as e:
     #     print(e)
     #     print(error_index)
@@ -270,13 +278,14 @@ if __name__ == '__main__':
     try:
         data_base = read_db_config()
         name_table = data_base.get('last_name_table')
+        number_of_polls = 1
         while True:
             connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
                                           user=data_base.get('user'),
                                           password=data_base.get('password'))
             connect.close()
-            processing(get_json(), read_db())
+            processing(get_json(), read_db(), number_of_polls)
             time.sleep(time_sleep.get('test'))
 
     except KeyboardInterrupt as er:
@@ -284,7 +293,7 @@ if __name__ == '__main__':
     except mysql.connector.errors.DatabaseError as error:
 
         for connection_attempt in range(3):
-            print(error, '\n', 'Connection attempt. Number attempt: ' + str(connection_attempt))
+            # print(error, '\n', 'Connection attempt. Number attempt: ' + str(connection_attempt))
             try:
                 connect = mysql.connector.connect(host=data_base.get('host'),
                                                   database=data_base.get('database'),
@@ -300,7 +309,7 @@ if __name__ == '__main__':
                 if name_table not in table_list:
                     command = 'python /home/np/PyProject/work/createDataBase.py'
                     popen(command)
-                print('Connection detected')
+                # print('Connection detected')
                 cursor.close()
                 connect.close()
                 break

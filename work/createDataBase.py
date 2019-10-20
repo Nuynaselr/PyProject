@@ -7,7 +7,7 @@ data_base = {}
 name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = 'action'):
+def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
     time_process = time.time() + 5
     dicti = {
         "UID": UID,
@@ -32,12 +32,12 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
 
 
 def get_njson():
-    row = ''
-    with open('nvidiaData', 'r') as file:
-          row = file.read()
-    # output = popen('nvidia-smi pmon -c 1 -s m')
-    # row = output.read()
-    # output.close()
+    # row = ''
+    # with open('nvidiaData', 'r') as file:
+    #       row = file.read()
+    output = popen('nvidia-smi pmon -c 1 -s m')
+    row = output.read()
+    output.close()
 
     row = row.split('\n')
 
