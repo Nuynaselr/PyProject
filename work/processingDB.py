@@ -7,6 +7,7 @@ data_base = {}
 array_PID = []
 array_PID_db = []
 name_table = ''
+path_to_config = '/home/np/PyProject/work/config.ini'
 time_sleep = {
     'test': 2,
     'one_minute': 60,
@@ -39,7 +40,7 @@ def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIV
     return dicti
 
 
-def read_db_config(filename='/home/np/PyProject/work/config.ini', section='mysql'):
+def read_db_config(filename=path_to_config, section='mysql'):
     # create parser and read ini configuration file
     parser = ConfigParser()
     parser.read(filename)
@@ -87,7 +88,7 @@ def update_by_pid_death(PID):
 
         cursor = connect.cursor()
         update_row = 'UPDATE ' + name_table + ' SET LIVE = %s WHERE PID = %s'
-        cursor.execute(update_row, ('dead', PID,))
+        cursor.execute(update_row, ('0', PID,))
 
         connect.commit()
 
@@ -132,15 +133,23 @@ def read_db():
 
     return json_db
 
-def get_njson():
+def get_njson():	
     row = ''
-    with open('nvidiaData', 'r') as file:
-          row = file.read()
+    command = 'nvidia-smi pmon -c 1 -s m'
+    output = popen(command)
+    process = output.read()
+    output.close()
+
+    row = process.split('\n')
+
+    # row = ''
+    # with open('nvidiaData', 'r') as file:
+    #       row = file.read()
     # output = popen('nvidia-smi pmon -c 1 -s m')
     # row = output.read()
     # output.close()
 
-    row = row.split('\n')
+    # row = row.split('\n')
 
     row.pop(0)
     row.pop(0)

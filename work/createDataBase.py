@@ -5,6 +5,7 @@ import time
 
 data_base = {}
 name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
+path_to_config = '/home/np/PyProject/work/config.ini'
 
 
 def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
@@ -98,7 +99,7 @@ def get_json():
     return array_json
 
 
-def read_db_config(filename='/home/np/PyProject/work/config.ini', section='mysql'):
+def read_db_config(filename=path_to_config, section='mysql'):
     # create parser and read ini configuration file
     parser = ConfigParser()
     parser.read(filename)
@@ -123,10 +124,11 @@ def create_table():
                                           password=data_base.get('password'))
 
         # if connect.is_connected():
-        #     print('Connected to MariaDB')
+        #     print('Connected to MariaDB')l
 
         cursor = connect.cursor()
-        create_row = 'CREATE table %s (UID VARCHAR(10), ' \
+        create_row = 'CREATE table %s ' \
+                     '(UID INTEGER , ' \
                      'PID INTEGER, ' \
                      'PPID INTEGER, ' \
                      'C INTEGER, ' \
@@ -198,7 +200,7 @@ def add_data():
 def spec_main():
     head = []
     row = ''
-    with open('/home/np/PyProject/work/config.ini', 'r') as config:
+    with open(path_to_config, 'r') as config:
         head = [next(config) for x in range(5)]
 
     with open('config.ini', 'w') as config:
@@ -215,7 +217,7 @@ def spec_main():
 if __name__ == '__main__':
     head = []
     row = ''
-    with open('/home/np/PyProject/work/config.ini', 'r') as config:
+    with open(path_to_config, 'r') as config:
         head = [next(config) for x in range(5)]
 
     with open('config.ini', 'w') as config:
