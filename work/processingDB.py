@@ -193,9 +193,7 @@ def get_json():
     array_json = []
     process = process[1:]
     for i in range(len(process) - 1):
-        if process[i][0] != '0' and \
-                process[i][11] != 'ps' and \
-                process[i][11] != '/usr/bin/ps':
+        if process[i][11] != 'ps' and process[i][11] != '/usr/bin/ps':
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7],
                                           process[i][8], process[i][11], process[i][9], process[i][10]))
