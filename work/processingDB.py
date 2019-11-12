@@ -7,7 +7,6 @@ data_base = {}
 array_PID = []
 array_PID_db = []
 name_table = ''
-path_to_config = '/home/np/PyProject/work/config.ini'
 #/home/np/PyProject/work/config.ini
 #/usr/local/bin/mon/config.ini
 time_sleep = {
@@ -16,9 +15,6 @@ time_sleep = {
     'two_minutes': 120,
     'three_minutes': 180
 }
-
-def get_path():
-    return '/' + getcwd()
 
 
 def gen_element(USER, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
@@ -45,7 +41,7 @@ def gen_element(USER, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LI
     return dicti
 
 
-def read_db_config(filename=path_to_config, section='mysql'):
+def read_db_config(filename, section='mysql'):
     # create parser and read ini configuration file
     parser = ConfigParser()
     parser.read(filename)
@@ -110,7 +106,7 @@ def read_db():
     array_PID_db.clear()
 
     try:
-        dbconfig = read_db_config()
+        dbconfig = read_db_config(path_to_config)
         connect = mysql.connector.connect(host=data_base.get('host'),
                                           database=data_base.get('database'),
                                           user=data_base.get('user'),
@@ -290,9 +286,9 @@ def processing(json, json_db, number_of_polls):
 
 
 if __name__ == '__main__':
-    path_to_config = get_path() + '/config.ini'
+    path_to_config = getcwd() + '/config.ini'
     try:
-        data_base = read_db_config()
+        data_base = read_db_config(path_to_config)
         name_table = data_base.get('last_name_table')
         number_of_polls = 1
         while True:

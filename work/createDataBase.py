@@ -5,13 +5,8 @@ import time
 
 data_base = {}
 name_table = str(time.strftime('%Y_%m_%d_%H_%M'))
-path_to_config = '/home/np/PyProject/work/config.ini'
 #/home/np/PyProject/work/config.ini
 #/usr/local/bin/mon/config.ini
-
-
-def get_path():
-    return '/' + getcwd()
 
 
 def gen_element(USER, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
@@ -108,7 +103,7 @@ def get_json():
     return array_json
 
 
-def read_db_config(filename=path_to_config, section='mysql'):
+def read_db_config(filename, section='mysql'):
     # create parser and read ini configuration file
     parser = ConfigParser()
     parser.read(filename)
@@ -224,8 +219,8 @@ def spec_main():
 
 
 if __name__ == '__main__':
-    path_to_config = get_path() + '/config.ini'
-    data_base = read_db_config()
+    path_to_config = getcwd() + '/config.ini'
+    data_base = read_db_config(path_to_config)
     if name_table != data_base.get('last_name_table'):
         head = []
         row = ''
@@ -238,6 +233,6 @@ if __name__ == '__main__':
             row = row + 'last_name_table = ' + name_table + '\n'
             config.write(row)
 
-        data_base = read_db_config()
+        data_base = read_db_config(path_to_config)
         create_table()
         add_data()
