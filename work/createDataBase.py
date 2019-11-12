@@ -1,33 +1,39 @@
 import mysql.connector
 from configparser import ConfigParser
-from os import popen
+from os import popen, getcwd
 import time
 
 data_base = {}
-name_table = str(time.strftime("%Y_%m_%j_%H_%M"))
+name_table = str(time.strftime('%Y_%m_%d_%H_%M'))
 path_to_config = '/home/np/PyProject/work/config.ini'
+#/home/np/PyProject/work/config.ini
+#/usr/local/bin/mon/config.ini
 
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
+def get_path():
+    return '/' + getcwd()
+
+
+def gen_element(USER, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
     time_process = time.time() + 5
     dicti = {
-        "UID": UID,
-        "PID": PID,
-        "PPID": PPID,
-        "C": C,
-        "SZ": SZ,
-        "RSS": RSS,
-        "PSR": PSR,
-        "STIME": time_process,
-        "TTY": TTY,
-        "TIME": TIME,
-        "CMD": CMD,
-        "CPU": float(PCPU),
-        "MEM": float(PMEM),
-        "GPU": '',
-        "GMEM": '',
-        "ENDTIME": time_process,
-        "LIVE": LIVE
+        'USER': USER,
+        'PID': PID,
+        'PPID': PPID,
+        'C': C,
+        'SZ': SZ,
+        'RSS': RSS,
+        'PSR': PSR,
+        'STIME': time_process,
+        'TTY': TTY,
+        'TIME': TIME,
+        'CMD': CMD,
+        'CPU': float(PCPU),
+        'MEM': float(PMEM),
+        'GPU': '',
+        'GMEM': '',
+        'ENDTIME': time_process,
+        'LIVE': LIVE
     }
     return dicti
 
@@ -66,7 +72,7 @@ def get_njson():
 
 
 def get_json():
-    command = 'ps -eo uid,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
+    command = 'ps -eo user,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
     output = popen(command)
     process = output.read()
     output.close()
@@ -84,9 +90,12 @@ def get_json():
     process = process[1:]
     for i in range(len(process) - 1):
         if process[i][11] != 'ps' and process[i][11] != '/usr/bin/ps':
+            cmd_row = ""
+            for cmd_element in range(11, len(process[i])):
+                cmd_row += process[i][cmd_element]
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7],
-                                          process[i][8], process[i][11], process[i][9], process[i][10]))
+                                          process[i][8], cmd_row, process[i][9], process[i][10]))
 
     array_njson = get_njson()
     for element in array_json:
@@ -128,23 +137,23 @@ def create_table():
 
         cursor = connect.cursor()
         create_row = 'CREATE table %s ' \
-                     '(UID INTEGER , ' \
+                     '(USER VARCHAR(15), ' \
                      'PID INTEGER, ' \
                      'PPID INTEGER, ' \
                      'C INTEGER, ' \
                      'SZ INTEGER, ' \
                      'RSS INTEGER, ' \
                      'PSR INTEGER, ' \
-                     'STIME VARCHAR(20), ' \
+                     'STIME DOUBLE (15,1), ' \
                      'TTY VARCHAR(10), ' \
                      'TIME VARCHAR(8), ' \
-                     'CMD VARCHAR(70), ' \
+                     'CMD LONGTEXT, ' \
                      'CPU DOUBLE (4,1), ' \
                      'MEM DOUBLE (4,1), ' \
                      'GPU VARCHAR (10), ' \
                      'TYPE_ varchar (1), ' \
                      'GMEM varchar (10), ' \
-                     'ENDTIME VARCHAR(20), ' \
+                     'ENDTIME DOUBLE (15,1), ' \
                      'LIVE VARCHAR(7), ' \
                      'PRIMARY KEY (PID) )' % name_table
 
@@ -159,7 +168,7 @@ def create_table():
 
 def add_data():
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
+        query = 'INSERT INTO ' + name_table + '(USER, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
                                               'VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
@@ -173,7 +182,7 @@ def add_data():
         data = get_json()
         for cell in data:
             cursor = connect.cursor()
-            args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
+            args = (cell.get('USER'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                      cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
                      cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('GPU'),
                     cell.get('TYPE_'), cell.get('GMEM'),cell.get('ENDTIME'), cell.get('LIVE'))
@@ -215,17 +224,20 @@ def spec_main():
 
 
 if __name__ == '__main__':
-    head = []
-    row = ''
-    with open(path_to_config, 'r') as config:
-        head = [next(config) for x in range(5)]
-
-    with open('config.ini', 'w') as config:
-        for i in range(5):
-            row = row + head[i]
-        row = row + 'last_name_table = ' + name_table + '\n'
-        config.write(row)
-
+    path_to_config = get_path() + '/config.ini'
     data_base = read_db_config()
-    create_table()
-    add_data()
+    if name_table != data_base.get('last_name_table'):
+        head = []
+        row = ''
+        with open(path_to_config, 'r') as config:
+            head = [next(config) for x in range(5)]
+
+        with open(path_to_config, 'w') as config:
+            for i in range(5):
+                row = row + head[i]
+            row = row + 'last_name_table = ' + name_table + '\n'
+            config.write(row)
+
+        data_base = read_db_config()
+        create_table()
+        add_data()

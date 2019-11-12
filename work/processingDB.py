@@ -1,6 +1,6 @@
 import mysql.connector
 from configparser import ConfigParser
-from os import popen
+from os import popen, getcwd
 import time
 
 data_base = {}
@@ -8,6 +8,8 @@ array_PID = []
 array_PID_db = []
 name_table = ''
 path_to_config = '/home/np/PyProject/work/config.ini'
+#/home/np/PyProject/work/config.ini
+#/usr/local/bin/mon/config.ini
 time_sleep = {
     'test': 2,
     'one_minute': 60,
@@ -15,27 +17,30 @@ time_sleep = {
     'three_minutes': 180
 }
 
+def get_path():
+    return '/' + getcwd()
 
-def gen_element(UID, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
+
+def gen_element(USER, PID, PPID, C, SZ, RSS, PSR, TTY, TIME, CMD, PCPU, PMEM, LIVE = '1'):
     time_process = time.time()
     dicti = {
-        "UID": UID,
-        "PID": PID,
-        "PPID": PPID,
-        "C": C,
-        "SZ": SZ,
-        "RSS": RSS,
-        "PSR": PSR,
-        "STIME": time_process,
-        "TTY": TTY,
-        "TIME": TIME,
-        "CMD": CMD,
-        "CPU": float(PCPU),
-        "MEM": float(PMEM),
-        "GPU": '',
-        "GMEM": '',
-        "ENDTIME": time_process,
-        "LIVE": LIVE
+        'USER': USER,
+        'PID': PID,
+        'PPID': PPID,
+        'C': C,
+        'SZ': SZ,
+        'RSS': RSS,
+        'PSR': PSR,
+        'STIME': time_process,
+        'TTY': TTY,
+        'TIME': TIME,
+        'CMD': CMD,
+        'CPU': float(PCPU),
+        'MEM': float(PMEM),
+        'GPU': '',
+        'GMEM': '',
+        'ENDTIME': time_process,
+        'LIVE': LIVE
     }
     return dicti
 
@@ -117,7 +122,7 @@ def read_db():
         row = cursor.fetchone()
 
         while row is not None:
-            # print(row)  UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, PCPU, PMEM, ENDTIME, LIVE
+            # print(row)  USER, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, PCPU, PMEM, ENDTIME, LIVE
             #               0   1   2     3   4   5     6     7     8    9    10    11    12    13      14
             json_db.append(gen_element(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[8], row[9], row[10],
                                        row[11], row[12], row[14]))
@@ -176,7 +181,7 @@ def get_njson():
 
 def get_json():
     array_PID.clear()
-    command = 'ps -eo uid,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
+    command = 'ps -eo user,pid,ppid,c,sz,rss,psr,tty,time,pcpu,pmem,cmd'
     output = popen(command)
     process = output.read()
     output.close()
@@ -194,9 +199,12 @@ def get_json():
     process = process[1:]
     for i in range(len(process) - 1):
         if process[i][11] != 'ps' and process[i][11] != '/usr/bin/ps':
+            cmd_row = ''
+            for cmd_element in range(11, len(process[i])):
+                cmd_row += process[i][cmd_element]
             array_json.append(gen_element(process[i][0], process[i][1], process[i][2], process[i][3],
                                           process[i][4], process[i][5], process[i][6], process[i][7],
-                                          process[i][8], process[i][11], process[i][9], process[i][10]))
+                                          process[i][8], cmd_row, process[i][9], process[i][10]))
             array_PID.append(int(process[i][1]))
 
     array_njson = get_njson()
@@ -212,7 +220,7 @@ def get_json():
 
 def add_data(cell):
     try:
-        query = 'INSERT INTO ' + name_table + '(UID, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
+        query = 'INSERT INTO ' + name_table + '(USER, PID, PPID, C, SZ, RSS, PSR, STIME, TTY, TIME, CMD, CPU, MEM, GPU, TYPE_, GMEM, ENDTIME, LIVE) ' \
                                               'VALUES(%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
 
         connect = mysql.connector.connect(host=data_base.get('host'),
@@ -221,7 +229,7 @@ def add_data(cell):
                                           password=data_base.get('password'))
 
         cursor = connect.cursor()
-        args = (cell.get('UID'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
+        args = (cell.get('USER'), cell.get('PID'), cell.get('PPID'), cell.get('C'),
                 cell.get('SZ'), cell.get('RSS'), cell.get('PSR'), cell.get('STIME'), cell.get('TTY'),
                 cell.get('TIME'), cell.get('CMD'), cell.get('CPU'), cell.get('MEM'), cell.get('GPU'),
                 cell.get('TYPE_'), cell.get('GMEM'), cell.get('ENDTIME'), cell.get('LIVE'))
@@ -282,6 +290,7 @@ def processing(json, json_db, number_of_polls):
 
 
 if __name__ == '__main__':
+    path_to_config = get_path() + '/config.ini'
     try:
         data_base = read_db_config()
         name_table = data_base.get('last_name_table')
@@ -293,7 +302,7 @@ if __name__ == '__main__':
                                           password=data_base.get('password'))
             connect.close()
             processing(get_json(), read_db(), number_of_polls)
-            time.sleep(time_sleep.get('test'))
+            #time.sleep(time_sleep.get('test'))
 
     except KeyboardInterrupt as er:
         pass
