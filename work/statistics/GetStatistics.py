@@ -90,7 +90,13 @@ def get_data_from_table(name_table):
         connect.close()
 
 
-def convert_to_structure(data_from_table):
+def check_list_user(new_user_list, user_list, main_json):
+    for element in new_user_list:
+        if element not in user_list:
+            user_list.append(element)
+
+
+def convert_to_structure(user_list, data_from_table):
     pass
 
 
