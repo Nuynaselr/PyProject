@@ -19,14 +19,14 @@ def get_list_table():
         read_row = 'SHOW TABLES'
 
         cursor.execute(read_row)
-        data_in_db = cursor.fetchall()
+        data_from_db = cursor.fetchall()
         # ddb - data from data base
-        change_ddb = []
-        for element in data_in_db:
-            change_ddb.append(element[0])
-        change_ddb = tuple(change_ddb)
+        change_ddb_table = []
+        for element in data_from_db:
+            change_ddb_table.append(element[0])
+        change_ddb_table = tuple(change_ddb_table)
 
-        return change_ddb
+        return change_ddb_table
 
     except mysql.connector.Error as error:
         print(error)
@@ -34,6 +34,64 @@ def get_list_table():
     finally:
         cursor.close()
         connect.close()
+
+
+def get_list_user(name_table):
+    try:
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
+
+        # if connect.is_connected():
+        #     print('Connected to MariaDB')l
+
+        cursor = connect.cursor()
+        read_row = 'SELECT USER FROM ' + name_table + ' GROUP BY USER'
+
+        cursor.execute(read_row)
+        data_from_db = cursor.fetchall()
+        # ddb - data from data base
+        change_ddb_user = []
+        for user in data_from_db:
+            change_ddb_user.append(user[0])
+        change_ddb_user = tuple(change_ddb_user)
+
+        return change_ddb_user
+
+    except mysql.connector.Error as error:
+        print(error)
+
+    finally:
+        cursor.close()
+        connect.close()
+
+
+def get_data_from_table(name_table):
+    try:
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
+
+        cursor = connect.cursor()
+        read_row = 'SELECT USER, CPU, MEM, GPU, GMEM, ENDTIME FROM ' + name_table
+
+        cursor.execute(read_row)
+        data_from_db = cursor.fetchall()
+
+        return data_from_db
+
+    except mysql.connector.Error as error:
+        print(error)
+
+    finally:
+        cursor.close()
+        connect.close()
+
+
+def convert_to_structure(data_from_table):
+    pass
 
 
 def read_db_config(filename, section='mysql'):
@@ -57,5 +115,5 @@ if __name__ == '__main__':
     path_to_config = path.dirname(path.abspath('')) + '/config.ini'
     print(path_to_config)
     data_base = read_db_config(path_to_config)
-    data_from_db = get_list_table()
-    print(data_from_db)
+    table_from_db = get_list_table()
+    print(get_data_from_table(table_from_db[0]))

@@ -155,6 +155,7 @@ def get_njson():
     row.pop(0)
     row.pop(0)
 
+
     for i in range(len(row)):
         row[i] = row[i].split(' ')
 
