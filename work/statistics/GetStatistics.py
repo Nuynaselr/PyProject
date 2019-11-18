@@ -125,6 +125,34 @@ def convert_to_structure_per_month_CPU(list_table):
         print('{0}: {1}'.format(element, final_dict_data.get(element)))
 
 
+def get_data_from_table_GPU(name_table):
+    try:
+        connect = mysql.connector.connect(host=data_base.get('host'),
+                                          database=data_base.get('database'),
+                                          user=data_base.get('user'),
+                                          password=data_base.get('password'))
+
+        cursor = connect.cursor()
+        read_json = {}
+        read_row = 'SELECT USER, GPU, GMEM FROM ' + name_table + ' where GPU != \'\' '
+
+        cursor.execute(read_row)
+        data_from_db = cursor.fetchall()
+
+        for element in data_from_db:
+            pass
+
+
+        return read_json
+
+    except mysql.connector.Error as error:
+        print(error)
+
+    finally:
+        cursor.close()
+        connect.close()
+
+
 def read_db_config(filename, section='mysql'):
     # create parser and read ini configuration file
     parser = ConfigParser()
@@ -160,9 +188,8 @@ if __name__ == '__main__':
     table_from_db = get_list_table()
 
     table_from_db = create_true_list_table(table_from_db)
-    sorted(table_from_db)
-    for element_arr_table in table_from_db:
-        print(element_arr_table)
-        convert_to_structure_per_month_CPU(table_from_db.get(element_arr_table))
+    # for element_arr_table in table_from_db:
+    #     print(element_arr_table)
+    #     convert_to_structure_per_month_CPU(table_from_db.get(element_arr_table))
 
-    # convert_to_structure_per_month(table_from_db)
+    get_data_from_table_GPU(table_from_db.get('11')[1])
