@@ -9,6 +9,7 @@ tuple_months = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 
 exclusive_tables = ['2019_10_12_23_03', '', '']
 # exclusive_tables = ['2019_10_09_18_50', '2019_10_10_15_57', '2019_10_16_20_51', '2019_11_01_12_00']
 
+
 def get_list_table():
     try:
         connect = mysql.connector.connect(host=data_base.get('host'),
@@ -140,8 +141,25 @@ def get_data_from_table_GPU(name_table):
         data_from_db = cursor.fetchall()
 
         for element in data_from_db:
-            pass
+            element = list(element)
+            element[1] = element[1].split('|')
+            element[1].remove('')
+            element[2] = element[2].split('|')
+            element[2].remove('')
+            if element[0] in read_json:
+                for j in range(0, len(element[1])):
+                    read_json.get(element[0])[int(element[1][j])] += int(element[2][j])
+                j = 0
+            else:
+                read_json[element[0]] = [0, 0, 0, 0]
+                for i in element[1]:
+                    read_json.get(element[0])[int(i)] += int(element[2][int(i)])
+                i = 0
 
+        for element_from_rj in range(0, len(read_json.get(data_from_db[0][0]))):
+            print(read_json.get(data_from_db[0][0])[element_from_rj])
+            if read_json.get(data_from_db[0][0])[element_from_rj] != 0:
+                read_json.get(data_from_db[0][0])[element_from_rj] /= len(data_from_db)
 
         return read_json
 
@@ -151,6 +169,33 @@ def get_data_from_table_GPU(name_table):
     finally:
         cursor.close()
         connect.close()
+
+
+def convert_to_structure_per_month_GPU(list_table):
+    # list_user = get_list_user(table)
+    data_from_table = []
+    for table in list_table:
+        data_from_table.append(get_data_from_table_GPU(table))
+
+    final_dict_data = copy.deepcopy(data_from_table[0])
+
+    for element in data_from_table:
+        for element_dictionary in element.keys():
+            if element_dictionary in final_dict_data:
+                for j in range(0, len(element[1])):
+                    final_dict_data.get(element[0])[int(element[1][j])] += int(element[2][j])
+            else:
+                final_dict_data[element_dictionary] = [element.get(element_dictionary)[0],
+                                                       element.get(element_dictionary)[1],
+                                                       element.get(element_dictionary)[2]]
+
+    length_for_avg = len(data_from_table)
+    for element in final_dict_data:
+        final_dict_data.get(element)[0] /= length_for_avg
+        final_dict_data.get(element)[1] /= length_for_avg
+
+    for element in final_dict_data:
+        print('{0}: {1}'.format(element, final_dict_data.get(element)))
 
 
 def read_db_config(filename, section='mysql'):
@@ -192,4 +237,4 @@ if __name__ == '__main__':
     #     print(element_arr_table)
     #     convert_to_structure_per_month_CPU(table_from_db.get(element_arr_table))
 
-    get_data_from_table_GPU(table_from_db.get('11')[1])
+    print(convert_to_structure_per_month_GPU(['2019_9_12_22_48']))
