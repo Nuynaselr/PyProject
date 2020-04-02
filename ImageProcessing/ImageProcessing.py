@@ -4,6 +4,7 @@ import time
 import numpy
 from ImageList import ImageList
 from tqdm import tqdm
+import cv2
 
 # getting current directory
 
@@ -28,8 +29,8 @@ def search_vector(array_point_image, array_color):
 def search(array_point_image, array_color):
     distance = 0.0
     min = inf
-    for i in range(7):
-        for j in range(7):
+    for i in range(len(array_color)):
+        for j in range(len(array_color[0])):
             distance = sqrt((array_point_image[0] - float(array_color[i][j][0])) * (
                         array_point_image[0] - float(array_color[i][j][0])) + (
                                         array_point_image[1] - float(array_color[i][j][1])) * (
@@ -50,10 +51,13 @@ if __name__ == "__main__":
     counter = 1
 
     # open image
-    color_map = io.imread("colour_map.png")
+    color_map = io.imread("map.png")
 
     # convert rpg in lab, lab - format that is closer to human
+    color_map = cv2.cvtColor(color_map, cv2.COLOR_RGBA2RGB)
     color_map = color.rgb2lab(color_map)
+
+
 
     # enter in directory
     # getting list files in directory and  walk for each
@@ -79,14 +83,15 @@ if __name__ == "__main__":
         # open image
         image_rgb = io.imread(image)
 
+
         # getting size image
         height_image = len(image_rgb)
         width_image = len(image_rgb[0])
 
+        image_rgb = cv2.cvtColor(image_rgb, cv2.COLOR_RGBA2RGB)
         # convert rpg in lab, lab - format that is closer to human
         image_lab = color.rgb2lab(image_rgb)
-        for bar in tqdm(range(height_image * width_image)):
-            for i in range(0, height_image):
+        for i in tqdm(range(0, height_image)):
                 for j in range(0, width_image):
                     # search nearest color
                     min_row, min_color = search(image_lab[i][j], color_map)
